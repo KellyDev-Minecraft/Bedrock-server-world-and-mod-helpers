@@ -1,0 +1,56 @@
+# Minecraft Bedrock Server .gitignore
+
+# Server data and worlds
+mcpe/*
+!mcpe/.gitkeep
+
+# Backups
+world_backups/*
+!world_backups/README.md
+
+# Setup logs
+SETUP_SUMMARY.txt
+
+# Mod and world files (Minecraft Bedrock extensions)
+*.mcworld
+*.mcaddon
+*.mcpack
+*.mcproject
+*.mctemplate
+*.mcscene
+*.mcstructure
+*.mclevel
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+*.swp
+*~

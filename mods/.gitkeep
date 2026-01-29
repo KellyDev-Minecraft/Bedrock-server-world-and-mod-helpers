@@ -1,0 +1,1 @@
+Place all mods (.mcaddon, .mcpack) into this folder and the setup_world.py will uncpack them into the mcpe folder for use on the server
