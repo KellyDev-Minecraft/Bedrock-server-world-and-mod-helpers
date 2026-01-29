@@ -53,8 +53,8 @@ sudo docker start mcpe
 To schedule automatic daily backups, add to crontab:
 
 ```bash
-# Daily backup at 3 AM
-0 3 * * * cd /mnt/z/Minecraft/server && python3 scripts/backup_world.py
+# Daily backup at 3 AM (from repo root directory)
+0 3 * * * cd /path/to/repo && python3 scripts/backup_world.py
 ```
 
 Run `crontab -e` to edit:

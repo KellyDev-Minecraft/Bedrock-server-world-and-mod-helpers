@@ -298,7 +298,7 @@ sudo docker restart mcpe
 
 ## Notes
 
-- Server data is mounted as volume: `/mnt/z/Minecraft/server/mcpe` → `/data` in container
+- Server data is mounted as volume: `<repo-root>/mcpe` → `/data` in container
 - Mods are installed in development packs directories (not packed into world)
 - World is automatically backed up before setup script runs
 - All scripts use absolute paths for reliability

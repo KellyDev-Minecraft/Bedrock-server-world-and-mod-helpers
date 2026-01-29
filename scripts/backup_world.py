@@ -8,12 +8,21 @@ import os
 import sys
 import shutil
 import zipfile
+import subprocess
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-# Paths
-SERVER_ROOT = Path("/mnt/z/Minecraft/server")
+# Paths - get git repository root
+try:
+    result = subprocess.run(
+        ['git', 'rev-parse', '--show-toplevel'],
+        capture_output=True, text=True, cwd=Path(__file__).parent
+    )
+    SERVER_ROOT = Path(result.stdout.strip())
+except Exception:
+    # Fallback: assume script is in scripts/ subdirectory of repo root
+    SERVER_ROOT = Path(__file__).resolve().parent.parent
 WORLDS_DIR = SERVER_ROOT / "mcpe" / "worlds"
 BEDROCK_WORLD = WORLDS_DIR / "Bedrock level"
 BACKUPS_DIR = SERVER_ROOT / "backups"

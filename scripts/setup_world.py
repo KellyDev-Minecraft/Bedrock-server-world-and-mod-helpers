@@ -13,14 +13,22 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
-# Paths
-SERVER_ROOT = Path("/mnt/z/Minecraft/server")
+# Paths - get git repository root
+try:
+    result = subprocess.run(
+        ['git', 'rev-parse', '--show-toplevel'],
+        capture_output=True, text=True, cwd=Path(__file__).parent
+    )
+    SERVER_ROOT = Path(result.stdout.strip())
+except Exception:
+    # Fallback: assume script is in scripts/ subdirectory of repo root
+    SERVER_ROOT = Path(__file__).resolve().parent.parent
 WORLD_BACKUPS_DIR = SERVER_ROOT / "world_backups"
 MODS_DIR = SERVER_ROOT / "mods"
 MCPE_DIR = SERVER_ROOT / "mcpe"
 WORLDS_DIR = MCPE_DIR / "worlds"
 BEDROCK_WORLD = WORLDS_DIR / "Bedrock level"
-TEMP_EXTRACT = Path("/tmp/minecraft_setup")
+TEMP_EXTRACT = Path(__import__('tempfile').gettempdir()) / "minecraft_setup"
 
 def select_world_backup() -> Optional[Path]:
     """
