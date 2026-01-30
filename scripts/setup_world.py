@@ -10,6 +10,7 @@ import subprocess
 import zipfile
 import shutil
 import sys
+import re
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
@@ -253,17 +254,20 @@ def install_mods():
     dev_bp_dir = MCPE_DIR / "behavior_packs"
     dev_rp_dir = MCPE_DIR / "resource_packs"
     
+    # UUID regex pattern: 8-4-4-4-12 hex characters
+    uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+    
     # Clean up existing packs first
     print("  Cleaning up previously deployed mods...")
     for d in [dev_bp_dir, dev_rp_dir]:
         if d.exists():
             for item in d.iterdir():
                 if item.is_dir():
-                    # Skip vanilla and internal folders
-                    if item.name.lower().startswith('vanilla') or item.name.lower() in ['chemistry', 'definitions', 'experimental']:
-                        print(f"  Skipping cleanup of internal pack: {item.name}")
-                        continue
-                    shutil.rmtree(item)
+                    # Only delete if it matches UUID pattern
+                    if uuid_pattern.match(item.name):
+                        shutil.rmtree(item)
+                    else:
+                        print(f"  Skipping non-mod folder: {item.name}")
     
     # Create directories if they don't exist
     dev_bp_dir.mkdir(parents=True, exist_ok=True)
