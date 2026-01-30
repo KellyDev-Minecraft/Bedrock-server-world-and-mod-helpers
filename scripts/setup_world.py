@@ -123,14 +123,19 @@ def get_mod_uuids() -> Dict[str, Dict]:
         for manifest in mod_temp.rglob("manifest.json"):
             uuid, version = extract_uuid_from_manifest(str(manifest))
             if uuid:
-                pack_type = "behavior" if "BP" in str(manifest) or "behavior" in str(manifest).lower() else "resource"
+                try:
+                    with open(manifest, 'r') as f:
+                        data = json.load(f)
+                    pack_type = determine_pack_type(data)
+                except:
+                    pack_type = "resource"
                 print(f"  Found {pack_type} pack: {uuid} (version {version})")
                 
                 if uuid not in mod_uuids:
                     mod_uuids[uuid] = {
                         'mod': mod_name,
                         'version': version,
-                        'type': pack_type,
+                        'type': determine_pack_type(data),
                         'file': mod_file.name
                     }
     
@@ -195,7 +200,7 @@ def create_pack_json(pack_ids: List[Dict], json_file: str):
     packs = []
     for pack_info in pack_ids:
         packs.append({
-            "pack_id": pack_info['uuid'],
+            "pack_id": pack_info['pack_id'],
             "version": pack_info['version']
         })
     
@@ -203,6 +208,7 @@ def create_pack_json(pack_ids: List[Dict], json_file: str):
         json.dump(packs, f, indent=8)
     print(f"Created {Path(json_file).name}")
 
+# Setup pack directories
 def setup_packs_json(mod_uuids: Dict[str, Dict]):
     """Setup the world_behavior_packs.json and world_resource_packs.json files."""
     print("\nSetting up pack JSON files...")
@@ -212,7 +218,7 @@ def setup_packs_json(mod_uuids: Dict[str, Dict]):
     
     for uuid, info in mod_uuids.items():
         pack_dict = {
-            'uuid': uuid,
+            'pack_id': uuid,
             'version': info['version']
         }
         
@@ -229,25 +235,35 @@ def setup_packs_json(mod_uuids: Dict[str, Dict]):
     resource_json = BEDROCK_WORLD / "world_resource_packs.json"
     create_pack_json(resource_packs, str(resource_json))
 
+def determine_pack_type(manifest_data: dict) -> str:
+    """Determine if a pack is behavior or resource based on its modules."""
+    modules = manifest_data.get('modules', [])
+    for module in modules:
+        mtype = module.get('type')
+        if mtype in ['data', 'javascript', 'script']:
+            return "behavior"
+        elif mtype in ['resources', 'client_data']:
+            return "resource"
+    return "resource"  # Default to resource if unknown
+
 def install_mods():
-    """Copy all mod files to mcpe/development_*_packs directories."""
+    """Copy all mod files to mcpe/behavior_packs and mcpe/resource_packs directories."""
     print("\nInstalling mods...")
     
-    dev_bp_dir = MCPE_DIR / "development_behavior_packs"
-    dev_rp_dir = MCPE_DIR / "development_resource_packs"
+    dev_bp_dir = MCPE_DIR / "behavior_packs"
+    dev_rp_dir = MCPE_DIR / "resource_packs"
     
     # Clean up existing packs first
     print("  Cleaning up previously deployed mods...")
-    if dev_bp_dir.exists():
-        # Remove all subdirectories (packs) but keep the directory itself
-        for item in dev_bp_dir.iterdir():
-            if item.is_dir():
-                shutil.rmtree(item)
-    if dev_rp_dir.exists():
-        # Remove all subdirectories (packs) but keep the directory itself
-        for item in dev_rp_dir.iterdir():
-            if item.is_dir():
-                shutil.rmtree(item)
+    for d in [dev_bp_dir, dev_rp_dir]:
+        if d.exists():
+            for item in d.iterdir():
+                if item.is_dir():
+                    # Skip vanilla and internal folders
+                    if item.name.lower().startswith('vanilla') or item.name.lower() in ['chemistry', 'definitions', 'experimental']:
+                        print(f"  Skipping cleanup of internal pack: {item.name}")
+                        continue
+                    shutil.rmtree(item)
     
     # Create directories if they don't exist
     dev_bp_dir.mkdir(parents=True, exist_ok=True)
@@ -262,6 +278,9 @@ def install_mods():
         print(f"\nInstalling: {mod_file.name}")
         
         mod_temp = TEMP_EXTRACT / mod_name
+        if mod_temp.exists():
+            shutil.rmtree(mod_temp)
+        mod_temp.mkdir(parents=True, exist_ok=True)
         
         # Extract mod
         try:
@@ -271,33 +290,32 @@ def install_mods():
             print(f"  Error extracting {mod_file.name}: {e}")
             continue
         
-        # Find and copy behavior and resource packs
-        for item in mod_temp.iterdir():
-            if item.is_dir():
-                # Check if it's a behavior or resource pack
-                manifest_path = item / "manifest.json"
-                if manifest_path.exists():
-                    try:
-                        with open(manifest_path, 'r') as f:
-                            data = json.load(f)
-                            uuid = data.get('header', {}).get('uuid', '')
-                            pack_type = data.get('header', {}).get('pack_scope', 'global')
-                            
-                            if pack_type == 'world' or 'behavior' in item.name.lower() or 'BP' in item.name:
-                                dest = dev_bp_dir / uuid
-                                print(f"  Installing behavior pack: {uuid}")
-                            else:
-                                dest = dev_rp_dir / uuid
-                                print(f"  Installing resource pack: {uuid}")
-                            
-                            # Remove destination if it exists
-                            if dest.exists():
-                                shutil.rmtree(dest)
-                            
-                            # Copy pack
-                            shutil.copytree(item, dest)
-                    except Exception as e:
-                        print(f"  Warning: Could not determine pack type for {item.name}: {e}")
+        # Find all manifest.json files (nested or flat)
+        manifests = list(mod_temp.rglob("manifest.json"))
+        
+        for manifest_path in manifests:
+            try:
+                with open(manifest_path, 'r') as f:
+                    data = json.load(f)
+                    header = data.get('header', {})
+                    uuid = header.get('uuid')
+                    if not uuid:
+                        continue
+                        
+                    pack_type = determine_pack_type(data)
+                    dest_dir = dev_bp_dir if pack_type == 'behavior' else dev_rp_dir
+                    
+                    dest = dest_dir / uuid
+                    print(f"  Installing {pack_type} pack: {header.get('name')} ({uuid})")
+                    
+                    # Remove destination if it exists
+                    if dest.exists():
+                        shutil.rmtree(dest)
+                    
+                    # Copy the pack folder (parent of manifest.json)
+                    shutil.copytree(manifest_path.parent, dest)
+            except Exception as e:
+                print(f"  Warning: Could not process {manifest_path}: {e}")
 
 def check_required_mods(world_file: Path) -> bool:
     """
@@ -493,9 +511,11 @@ def main():
         print("Setup complete!")
         print("=" * 70)
         print(f"World location: {BEDROCK_WORLD}")
-        print(f"Development packs: {MCPE_DIR / 'development_*_packs'}")
-        print("\nNext steps:")
+        print(f"Behavior packs: {MCPE_DIR / 'behavior_packs'}")
+        print(f"Resource packs: {MCPE_DIR / 'resource_packs'}")
+        print("Next steps:")
         print("  1. Restart the server: sudo docker restart mcpe")
+        print("     (Or if re-creating: include -e EULA=TRUE for itzg image)")
         print("  2. View logs: sudo docker logs -f mcpe")
         print()
         

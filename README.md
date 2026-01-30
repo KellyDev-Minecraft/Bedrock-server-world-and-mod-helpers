@@ -6,7 +6,7 @@ A Docker-based Minecraft Bedrock Edition server with automated world setup and b
 
 This project sets up and manages a Minecraft Bedrock Edition server running in Docker with support for multiple mods and automated world backups.
 
-**Docker Image:** [lomot/minecraft-bedrock:latest](https://hub.docker.com/r/lomot/minecraft-bedrock)
+**Docker Image:** [itzg/minecraft-bedrock-server:latest](https://github.com/itzg/docker-minecraft-bedrock-server)
 
 ## Quick Start
 
@@ -15,9 +15,10 @@ This project sets up and manages a Minecraft Bedrock Edition server running in D
 To create the Minecraft Bedrock server container using the mcpe folder from this project:
 
 ```bash
-sudo docker run -itd --restart=always --name=mcpe --net=host \
+sudo docker run -itd --restart=always --name=mcpe \
+  -e EULA=TRUE -p 19132:19132/udp \
   -v $(pwd)/mcpe:/data \
-  lomot/minecraft-bedrock:latest
+  itzg/minecraft-bedrock-server:latest
 ```
 
 **Environment Variables:**
@@ -318,4 +319,4 @@ Minecraft Bedrock is owned by Mojang/Microsoft. This project is for personal ser
 
 **Last Updated:** January 28, 2026  
 **Setup Date:** January 28, 2026  
-**Server Image Version:** latest
+**Server Image Version:** itzg/minecraft-bedrock-server:latest
